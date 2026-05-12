@@ -4,8 +4,13 @@ import OpenAI from 'openai'
 import { createServiceClient } from '@/lib/supabase/server'
 import { ProductProfile } from '@/types/database'
 
+export const dynamic = 'force-dynamic'
+
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+// OpenAI client is initialized lazily to avoid build-time errors
+function getOpenAI() {
+  return new OpenAI({ apiKey: process.env.OPENAI_API_KEY ?? '' })
+}
 
 const INDUSTRY_LABELS: Record<string, string> = {
   IT_SAAS: 'SaaS/IT', REAL_ESTATE: '不動産', FINANCE: '金融',
@@ -41,7 +46,7 @@ export async function POST(request: NextRequest) {
     const audioFile = new File([fileData], 'audio.webm', { type: 'audio/webm' })
     let transcriptText = ''
     try {
-      const transcription = await openai.audio.transcriptions.create({
+      const transcription = await getOpenAI().audio.transcriptions.create({
         file: audioFile,
         model: 'whisper-1',
         language: 'ja',

@@ -434,7 +434,8 @@ function VoiceSession({
   const [transcript, setTranscript] = useState('')
   const [elapsed, setElapsed] = useState(0)
   const [error, setError] = useState('')
-  const recognitionRef = useRef<SpeechRecognition | null>(null)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const recognitionRef = useRef<any>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -474,13 +475,17 @@ function VoiceSession({
       setError('このブラウザは音声認識に対応していません。Chrome または Edge をご使用ください。')
       return
     }
-    const SR = (window as Window & { webkitSpeechRecognition?: typeof SpeechRecognition }).webkitSpeechRecognition ?? SpeechRecognition
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const w = window as any
+    const SR = w.webkitSpeechRecognition ?? w.SpeechRecognition
     const recognition = new SR()
     recognition.lang = 'ja-JP'
     recognition.interimResults = true
     recognition.maxAlternatives = 1
-    recognition.onresult = (event: SpeechRecognitionEvent) => {
-      const t = Array.from(event.results).map(r => r[0].transcript).join('')
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    recognition.onresult = (event: any) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const t = Array.from(event.results).map((r: any) => r[0].transcript).join('')
       setTranscript(t)
     }
     recognition.onend = () => {

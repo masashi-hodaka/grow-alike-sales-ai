@@ -247,20 +247,23 @@ export default function NewProductPage() {
         {/* Step 3: Deal Info */}
         {step === 3 && (
           <div className="space-y-4">
-            <h2 className="font-bold text-gray-900 text-lg mb-4">案件・契約情報</h2>
+            <h2 className="font-bold text-gray-900 text-lg mb-1">案件・契約情報</h2>
+            <p className="text-gray-400 text-xs mb-4">わからない項目は空欄でOKです。入力するほどAIの精度が上がります。</p>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-sm font-semibold text-gray-700 block mb-1.5">平均営業サイクル</label>
+                <label className="text-sm font-semibold text-gray-700 block mb-0.5">平均営業サイクル</label>
+                <p className="text-xs text-gray-400 mb-1.5">初回接触〜契約までの平均日数。例：テレアポ営業なら30〜60日、エンタープライズなら90〜180日が目安</p>
                 <div className="flex items-center gap-2">
                   <input type="number" value={form.sales_cycle_days} onChange={e => set('sales_cycle_days', e.target.value)}
-                    placeholder="30"
+                    placeholder="例: 60"
                     className="flex-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-gray-50" />
                   <span className="text-sm text-gray-500 whitespace-nowrap">日</span>
                 </div>
               </div>
               <div>
-                <label className="text-sm font-semibold text-gray-700 block mb-1.5">契約期間</label>
+                <label className="text-sm font-semibold text-gray-700 block mb-0.5">契約期間</label>
+                <p className="text-xs text-gray-400 mb-1.5">契約の単位。例：「1年」「月次（いつでも解約可）」「3年縛り」など</p>
                 <input value={form.contract_duration} onChange={e => set('contract_duration', e.target.value)}
                   placeholder="例：1年、月次"
                   className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-gray-50" />
@@ -268,23 +271,25 @@ export default function NewProductPage() {
             </div>
 
             <div>
-              <label className="text-sm font-semibold text-gray-700 block mb-1.5">案件規模（万円）</label>
+              <label className="text-sm font-semibold text-gray-700 block mb-0.5">案件規模（万円）</label>
+              <p className="text-xs text-gray-400 mb-1.5">1件あたりの契約金額（初回契約）の最小〜最大の目安。例：月額2万円なら「年間24万円」として入力。初期費用込みなら合算して入力</p>
               <div className="flex items-center gap-2">
                 <input type="number" value={form.deal_size_min} onChange={e => set('deal_size_min', e.target.value)}
-                  placeholder="最小"
+                  placeholder="最小 例: 20"
                   className="flex-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-gray-50" />
                 <span className="text-gray-400">〜</span>
                 <input type="number" value={form.deal_size_max} onChange={e => set('deal_size_max', e.target.value)}
-                  placeholder="最大"
+                  placeholder="最大 例: 100"
                   className="flex-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-gray-50" />
                 <span className="text-sm text-gray-500">万円</span>
               </div>
             </div>
 
             <div>
-              <label className="text-sm font-semibold text-gray-700 block mb-1.5">平均LTV（万円）</label>
+              <label className="text-sm font-semibold text-gray-700 block mb-0.5">平均LTV（万円）</label>
+              <p className="text-xs text-gray-400 mb-1.5">1顧客が生涯を通じて支払う合計金額の目安。例：月2万円×平均36ヶ月継続=72万円。わからなければ空欄でOK</p>
               <input type="number" value={form.ltv_avg} onChange={e => set('ltv_avg', e.target.value)}
-                placeholder="例：150"
+                placeholder="例：72"
                 className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-gray-50" />
             </div>
 

@@ -142,7 +142,8 @@ export default function BrainstormPage() {
   }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    // isComposing=true の間は日本語変換中なので送信しない
+    if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
       e.preventDefault()
       sendMessage()
     }

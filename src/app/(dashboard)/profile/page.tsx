@@ -135,7 +135,7 @@ export default async function ProfilePage() {
                   <span className="text-orange-500 text-sm font-bold">Lv.{level}</span>
                 </div>
               </div>
-              <Link href="/register?edit=true"
+              <Link href="/profile/edit"
                 className="text-sm border border-gray-200 text-gray-600 px-3 py-1.5 rounded-lg hover:bg-gray-50 transition">
                 編集
               </Link>

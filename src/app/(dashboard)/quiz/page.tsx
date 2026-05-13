@@ -1,7 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { createClient } from '@/lib/supabase/client'
 
 type QuizState = 'category' | 'question' | 'result'
 type QuestionType = 'multiple_choice' | 'written' | 'case_study'
@@ -60,6 +62,8 @@ const DUMMY_QUESTIONS = [
 ]
 
 export default function QuizPage() {
+  const router = useRouter()
+  const profileIdRef = useRef<string | null>(null)
   const [state, setState] = useState<QuizState>('category')
   const [selectedCategories, setSelectedCategories] = useState<string[]>([])
   const [selectedType, setSelectedType] = useState<QuestionType>('multiple_choice')
@@ -72,6 +76,37 @@ export default function QuizPage() {
   const question = DUMMY_QUESTIONS[currentQ]
   const totalXp = answers.reduce((sum, a) => sum + a.xp, 0)
   const correct = answers.filter(a => a.correct).length
+
+  // プロフィールIDをマウント時に取得
+  useEffect(() => {
+    const load = async () => {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      const { data: profile } = await supabase.from('profiles').select('id').eq('user_id', user.id).single()
+      if (profile) profileIdRef.current = profile.id
+    }
+    load()
+  }, [])
+
+  // クイズ完了時にXPをDBへ反映
+  const saveXpToDb = async (earnedXp: number) => {
+    if (!profileIdRef.current || earnedXp <= 0) return
+    try {
+      const supabase = createClient()
+      const { data: level } = await supabase
+        .from('user_levels')
+        .select('current_xp, total_xp_earned')
+        .eq('profile_id', profileIdRef.current)
+        .single()
+      if (!level) return
+      await supabase.from('user_levels').update({
+        current_xp: (level.current_xp ?? 0) + earnedXp,
+        total_xp_earned: (level.total_xp_earned ?? 0) + earnedXp,
+      }).eq('profile_id', profileIdRef.current)
+      router.refresh() // サイドバーのXP表示を更新
+    } catch { /* XP保存失敗は無視 */ }
+  }
 
   const toggleCategory = (id: string) => {
     setSelectedCategories(prev =>
@@ -93,6 +128,9 @@ export default function QuizPage() {
 
   const nextQuestion = () => {
     if (currentQ + 1 >= DUMMY_QUESTIONS.length) {
+      // answers には submitAnswer() で最後の回答が既に追加済み
+      const earned = answers.reduce((sum, a) => sum + a.xp, 0)
+      saveXpToDb(earned)
       setState('result')
     } else {
       setCurrentQ(q => q + 1)

@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+export const dynamic = 'force-dynamic'
+
+function getAnthropic() {
+  return new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY ?? '' })
+}
 
 const SYSTEM_PROMPT = `あなたは「Sales Coach AI」という、営業のプロフェッショナルコーチです。
 Grow Alike Sales AIというプラットフォーム上で、営業担当者の商談力向上を支援しています。
@@ -50,8 +54,8 @@ export async function POST(req: NextRequest) {
       systemPrompt += `\n【相談テーマ】${context.topic}`
     }
 
-    const response = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
+    const response = await getAnthropic().messages.create({
+      model: 'claude-sonnet-4-6',
       max_tokens: 1024,
       system: systemPrompt,
       messages,

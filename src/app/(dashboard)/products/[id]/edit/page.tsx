@@ -282,33 +282,45 @@ export default function EditProductPage() {
         </div>
 
         {/* 案件情報 */}
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="text-sm font-semibold text-gray-700 block mb-1.5">平均営業サイクル（日）</label>
-            <input value={form.sales_cycle_days} onChange={e => set('sales_cycle_days', e.target.value)}
-              type="number" placeholder="例：45"
-              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-gray-50" />
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-sm font-semibold text-gray-700 block mb-0.5">平均営業サイクル</label>
+              <p className="text-xs text-gray-400 mb-1.5">初回接触〜契約までの平均日数。例：テレアポ営業なら30〜60日、エンタープライズなら90〜180日が目安</p>
+              <div className="flex items-center gap-2">
+                <input value={form.sales_cycle_days} onChange={e => set('sales_cycle_days', e.target.value)}
+                  type="number" placeholder="例：45"
+                  className="flex-1 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-gray-50" />
+                <span className="text-sm text-gray-500 whitespace-nowrap">日</span>
+              </div>
+            </div>
+            <div>
+              <label className="text-sm font-semibold text-gray-700 block mb-0.5">契約期間</label>
+              <p className="text-xs text-gray-400 mb-1.5">契約の単位。例：「1年」「月次（いつでも解約可）」「3年縛り」など</p>
+              <input value={form.contract_duration} onChange={e => set('contract_duration', e.target.value)}
+                placeholder="例：1年、月次"
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-gray-50" />
+            </div>
           </div>
+
           <div>
-            <label className="text-sm font-semibold text-gray-700 block mb-1.5">契約期間</label>
-            <input value={form.contract_duration} onChange={e => set('contract_duration', e.target.value)}
-              placeholder="例：1年、月次"
-              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-gray-50" />
+            <label className="text-sm font-semibold text-gray-700 block mb-0.5">案件規模（万円）</label>
+            <p className="text-xs text-gray-400 mb-1.5">1件あたりの契約金額（初回契約）の最小〜最大の目安。例：月額2万円なら「年間24万円」として入力。初期費用込みなら合算して入力</p>
+            <div className="flex items-center gap-2">
+              <input value={form.deal_size_min} onChange={e => set('deal_size_min', e.target.value)}
+                type="number" placeholder="最小 例：10"
+                className="flex-1 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-gray-50" />
+              <span className="text-gray-400">〜</span>
+              <input value={form.deal_size_max} onChange={e => set('deal_size_max', e.target.value)}
+                type="number" placeholder="最大 例：100"
+                className="flex-1 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-gray-50" />
+              <span className="text-sm text-gray-500 whitespace-nowrap">万円</span>
+            </div>
           </div>
+
           <div>
-            <label className="text-sm font-semibold text-gray-700 block mb-1.5">案件規模・最小（万円）</label>
-            <input value={form.deal_size_min} onChange={e => set('deal_size_min', e.target.value)}
-              type="number" placeholder="例：10"
-              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-gray-50" />
-          </div>
-          <div>
-            <label className="text-sm font-semibold text-gray-700 block mb-1.5">案件規模・最大（万円）</label>
-            <input value={form.deal_size_max} onChange={e => set('deal_size_max', e.target.value)}
-              type="number" placeholder="例：100"
-              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-gray-50" />
-          </div>
-          <div className="col-span-2">
-            <label className="text-sm font-semibold text-gray-700 block mb-1.5">平均LTV（万円）</label>
+            <label className="text-sm font-semibold text-gray-700 block mb-0.5">平均LTV（万円）</label>
+            <p className="text-xs text-gray-400 mb-1.5">1顧客が生涯を通じて支払う合計金額の目安。例：月2万円×平均36ヶ月継続=72万円。わからなければ空欄でOK</p>
             <input value={form.ltv_avg} onChange={e => set('ltv_avg', e.target.value)}
               type="number" placeholder="例：72"
               className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-gray-50" />

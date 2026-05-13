@@ -43,6 +43,7 @@ export default function RegisterPage() {
   const [error, setError] = useState<string | null>(null)
   const [genMessages, setGenMessages] = useState<string[]>([])
   const [onboardingMode, setOnboardingMode] = useState<'product' | 'basic'>('product')
+  const [signedUpUserId, setSignedUpUserId] = useState<string | null>(null)
 
   // Step 1: 認証情報
   const [email, setEmail] = useState('')
@@ -67,13 +68,16 @@ export default function RegisterPage() {
     setError(null)
 
     const supabase = createClient()
-    const { error } = await supabase.auth.signUp({ email, password })
+    const { data, error } = await supabase.auth.signUp({ email, password })
 
     if (error) {
       setError(error.message)
       setLoading(false)
       return
     }
+
+    // signUp 直後にユーザーIDを保持（メール認証の有無に依存しない）
+    if (data.user) setSignedUpUserId(data.user.id)
 
     setLoading(false)
     setStep(2)
@@ -86,8 +90,10 @@ export default function RegisterPage() {
 
     try {
       const supabase = createClient()
+      // getUser() を優先し、失敗時は signUp 時に保存した userId を使う
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) throw new Error('ユーザーが見つかりません。メール確認が完了しているか確認してください。')
+      const userId = user?.id ?? signedUpUserId
+      if (!userId) throw new Error('セッションが見つかりません。ページを再読み込みして、再度お試しください。')
 
       const productProfile = {
         product_name: onboardingMode === 'product' ? productName : '（未設定）',
@@ -104,7 +110,7 @@ export default function RegisterPage() {
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .insert({
-          user_id: user.id,
+          user_id: userId,
           full_name: fullName || null,
           company_name: companyName || null,
           industry_type: industryType,
@@ -315,6 +321,11 @@ export default function RegisterPage() {
                 </button>
               ))}
             </div>
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-xl">
+                {error}
+              </div>
+            )}
             <div className="flex gap-3 pt-2">
               <button onClick={() => setStep(2)}
                 className="flex-1 border border-gray-200 text-gray-700 font-semibold py-3 rounded-xl hover:bg-gray-50 transition">

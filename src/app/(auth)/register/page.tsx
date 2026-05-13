@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 
@@ -38,6 +38,8 @@ const ONBOARDING_MODES = [
 
 export default function RegisterPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const isOnboarding = searchParams.get('onboarding') === 'true'
   const [step, setStep] = useState<Step>(1)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -45,6 +47,22 @@ export default function RegisterPage() {
   const [onboardingMode, setOnboardingMode] = useState<'product' | 'basic'>('product')
   const [signedUpUserId, setSignedUpUserId] = useState<string | null>(null)
   const [showPassword, setShowPassword] = useState(false)
+
+  // ?onboarding=true の場合：すでにログイン済みなのでStep 1をスキップ
+  useEffect(() => {
+    if (!isOnboarding) return
+    const checkSession = async () => {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        setSignedUpUserId(user.id)
+        setStep(2)
+      } else {
+        router.replace('/login')
+      }
+    }
+    checkSession()
+  }, [isOnboarding, router])
 
   // Step 1: 認証情報
   const [email, setEmail] = useState('')
@@ -61,7 +79,11 @@ export default function RegisterPage() {
   const [competitors, setCompetitors] = useState('')
   const [salesMethod, setSalesMethod] = useState('outbound')
 
-  const totalSteps = onboardingMode === 'product' ? 4 : 3
+  // onboarding=true の場合はStep 1(認証)をスキップするので表示上1少ない
+  const totalSteps = onboardingMode === 'product'
+    ? (isOnboarding ? 3 : 4)
+    : (isOnboarding ? 2 : 3)
+  const displayStep = isOnboarding ? step - 1 : step
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -72,6 +94,31 @@ export default function RegisterPage() {
     const { data, error } = await supabase.auth.signUp({ email, password })
 
     if (error) {
+      // すでに登録済みの場合：そのままログインしてプロフィール作成へ
+      const isAlreadyRegistered =
+        error.message.toLowerCase().includes('already registered') ||
+        error.message.toLowerCase().includes('already exists') ||
+        error.message.toLowerCase().includes('user already')
+
+      if (isAlreadyRegistered) {
+        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({ email, password })
+        if (!signInError && signInData.user) {
+          // ログイン成功 → プロフィールがあればダッシュボードへ、なければ続行
+          const { data: profile } = await supabase.from('profiles').select('id').eq('user_id', signInData.user.id).single()
+          if (profile) {
+            router.push('/dashboard')
+            return
+          }
+          setSignedUpUserId(signInData.user.id)
+          setLoading(false)
+          setStep(2)
+          return
+        }
+        setError('このメールアドレスはすでに登録されています。パスワードが正しいか確認してください。')
+        setLoading(false)
+        return
+      }
+
       setError(error.message)
       setLoading(false)
       return
@@ -208,10 +255,10 @@ export default function RegisterPage() {
             <div className="flex gap-1.5 mb-1.5">
               {Array.from({ length: totalSteps }, (_, i) => (
                 <div key={i} className="flex-1 h-1.5 rounded-full transition-all"
-                  style={{ background: i < step ? 'linear-gradient(90deg,#f97316,#ea580c)' : '#e5e7eb' }} />
+                  style={{ background: i < displayStep ? 'linear-gradient(90deg,#f97316,#ea580c)' : '#e5e7eb' }} />
               ))}
             </div>
-            <p className="text-xs text-gray-400">ステップ {step} / {totalSteps}</p>
+            <p className="text-xs text-gray-400">ステップ {displayStep} / {totalSteps}</p>
           </div>
         )}
 

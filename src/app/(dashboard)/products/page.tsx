@@ -17,6 +17,13 @@ export default async function ProductsPage() {
     .eq('is_active', true)
     .order('created_at', { ascending: false })
 
+  const segmentLabel: Record<string, string> = {
+    smb: 'SMB', mid: 'Mid市場', enterprise: 'エンタープライズ', all: '全市場',
+  }
+  const methodLabel: Record<string, string> = {
+    inbound: 'インバウンド', outbound: 'アウトバウンド', both: '両方',
+  }
+
   return (
     <div className="p-6 max-w-4xl">
       <div className="flex items-center justify-between mb-6">
@@ -46,8 +53,11 @@ export default async function ProductsPage() {
       {products && products.length > 0 ? (
         <div className="grid grid-cols-2 gap-4">
           {products.map(product => (
-            <Link key={product.id} href={`/products/${product.id}`}
-              className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 hover:border-orange-200 hover:shadow-md transition card-hover">
+            /* Use relative container + absolute overlay link to avoid nested <a> tags */
+            <div key={product.id} className="relative bg-white rounded-2xl p-5 shadow-sm border border-gray-100 hover:border-orange-200 hover:shadow-md transition">
+              {/* Full-card invisible link */}
+              <Link href={`/products/${product.id}`} className="absolute inset-0 rounded-2xl" aria-label={product.name} />
+
               <div className="flex items-start justify-between mb-3">
                 <div className="w-10 h-10 rounded-xl bg-orange-100 text-xl flex items-center justify-center">
                   📦
@@ -60,31 +70,30 @@ export default async function ProductsPage() {
               {product.description && (
                 <p className="text-gray-500 text-xs line-clamp-2 mb-3">{product.description}</p>
               )}
-              <div className="flex flex-wrap gap-1.5">
+              <div className="flex flex-wrap gap-1.5 mb-3">
                 {product.target_segment && (
                   <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
-                    {product.target_segment === 'smb' ? 'SMB' : product.target_segment === 'mid' ? 'Mid市場' : product.target_segment === 'enterprise' ? 'エンタープライズ' : '全市場'}
+                    {segmentLabel[product.target_segment] ?? product.target_segment}
                   </span>
                 )}
                 {product.sales_method && (
                   <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
-                    {product.sales_method === 'inbound' ? 'インバウンド' : product.sales_method === 'outbound' ? 'アウトバウンド' : '両方'}
+                    {methodLabel[product.sales_method] ?? product.sales_method}
                   </span>
                 )}
               </div>
-              <div className="mt-3 pt-3 border-t border-gray-100 flex items-center gap-2">
+              {/* Action buttons sit above the invisible link via relative z-index */}
+              <div className="relative z-10 pt-3 border-t border-gray-100 flex items-center gap-2">
                 <Link href={`/quiz?product=${product.id}`}
-                  onClick={e => e.stopPropagation()}
                   className="text-xs bg-orange-500 text-white px-3 py-1.5 rounded-lg hover:bg-orange-600 transition font-medium">
                   問題練習
                 </Link>
                 <Link href={`/roleplay?product=${product.id}`}
-                  onClick={e => e.stopPropagation()}
                   className="text-xs border border-gray-200 text-gray-600 px-3 py-1.5 rounded-lg hover:bg-gray-50 transition font-medium">
                   ロープレ
                 </Link>
               </div>
-            </Link>
+            </div>
           ))}
 
           {/* Add product card */}

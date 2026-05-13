@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
@@ -36,7 +36,7 @@ const ONBOARDING_MODES = [
   },
 ]
 
-export default function RegisterPage() {
+function RegisterContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const isOnboarding = searchParams.get('onboarding') === 'true'
@@ -114,7 +114,14 @@ export default function RegisterPage() {
           setStep(2)
           return
         }
-        setError('このメールアドレスはすでに登録されています。パスワードが正しいか確認してください。')
+        // メール未確認の場合
+        const isNotConfirmed = signInError?.message?.toLowerCase().includes('email not confirmed')
+          || signInError?.message?.toLowerCase().includes('not confirmed')
+        if (isNotConfirmed) {
+          setError('メール確認が完了していません。届いているメールのリンクをクリックするか、Supabaseダッシュボードでメール認証をOFFにしてください。')
+        } else {
+          setError('このメールアドレスはすでに登録されています。正しいパスワードでログインしてください。')
+        }
         setLoading(false)
         return
       }
@@ -504,5 +511,19 @@ export default function RegisterPage() {
         )}
       </div>
     </div>
+  )
+}
+
+// useSearchParams は Suspense 境界が必須（なしだとハイドレーション失敗でリンクが効かなくなる）
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center"
+        style={{ background: 'linear-gradient(135deg,#0f172a 0%,#1e293b 100%)' }}>
+        <div className="w-10 h-10 rounded-full border-4 border-orange-500/30 border-t-orange-500 animate-spin" />
+      </div>
+    }>
+      <RegisterContent />
+    </Suspense>
   )
 }

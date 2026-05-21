@@ -109,11 +109,20 @@ export default function BrainstormPage() {
         }),
       })
       const data = await res.json()
-      setMessages(prev => [...prev, {
-        role: 'assistant',
-        content: data.message ?? '申し訳ありません、エラーが発生しました。',
-        timestamp: new Date(),
-      }])
+      if (!res.ok || !data.message) {
+        const errMsg = data.error ?? '不明なエラー'
+        setMessages(prev => [...prev, {
+          role: 'assistant',
+          content: `⚠️ エラーが発生しました: ${errMsg}`,
+          timestamp: new Date(),
+        }])
+      } else {
+        setMessages(prev => [...prev, {
+          role: 'assistant',
+          content: data.message,
+          timestamp: new Date(),
+        }])
+      }
     } catch {
       setMessages(prev => [...prev, {
         role: 'assistant',
@@ -164,7 +173,7 @@ export default function BrainstormPage() {
   }
 
   return (
-    <div className="h-screen flex flex-col max-w-3xl">
+    <div className="h-[calc(100vh-3.5rem)] md:h-screen flex flex-col max-w-3xl">
       {/* Header */}
       <div className="px-6 py-4 bg-white border-b shadow-sm flex-shrink-0">
         <div className="flex items-center gap-2 text-gray-500 text-xs mb-2">

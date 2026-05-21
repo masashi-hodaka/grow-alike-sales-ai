@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 
 const INDUSTRY_OPTIONS = [
@@ -17,14 +18,20 @@ const INDUSTRY_OPTIONS = [
 
 export default function ProfileEditPage() {
   const router = useRouter()
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [uploadingAvatar, setUploadingAvatar] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [profileId, setProfileId] = useState<string | null>(null)
+  const [userId, setUserId] = useState<string | null>(null)
 
   const [fullName, setFullName] = useState('')
   const [companyName, setCompanyName] = useState('')
   const [industryType, setIndustryType] = useState('IT_SAAS')
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
 
   useEffect(() => {
     const load = async () => {
@@ -34,20 +41,62 @@ export default function ProfileEditPage() {
 
       const { data: profile } = await supabase
         .from('profiles')
-        .select('id, full_name, company_name, industry_type')
+        .select('id, full_name, company_name, industry_type, avatar_url')
         .eq('user_id', user.id)
         .single()
 
       if (!profile) { router.push('/register?onboarding=true'); return }
 
       setProfileId(profile.id)
+      setUserId(user.id)
       setFullName(profile.full_name ?? '')
       setCompanyName(profile.company_name ?? '')
       setIndustryType(profile.industry_type ?? 'IT_SAAS')
+      setAvatarUrl(profile.avatar_url ?? null)
       setLoading(false)
     }
     load()
   }, [router])
+
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !userId || !profileId) return
+
+    // Preview
+    const reader = new FileReader()
+    reader.onload = (ev) => setAvatarPreview(ev.target?.result as string)
+    reader.readAsDataURL(file)
+
+    // Upload to Supabase Storage
+    setUploadingAvatar(true)
+    setError(null)
+    try {
+      const supabase = createClient()
+      const ext = file.name.split('.').pop() ?? 'jpg'
+      const path = `${userId}/avatar.${ext}`
+
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(path, file, { upsert: true, contentType: file.type })
+
+      if (uploadError) throw uploadError
+
+      const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path)
+
+      // Add cache-bust query param so the browser fetches the new image
+      const urlWithCacheBust = `${publicUrl}?t=${Date.now()}`
+
+      // Save to profile immediately
+      await supabase.from('profiles').update({ avatar_url: urlWithCacheBust }).eq('id', profileId)
+      setAvatarUrl(urlWithCacheBust)
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'アップロードに失敗しました'
+      setError(msg)
+      setAvatarPreview(null)
+    } finally {
+      setUploadingAvatar(false)
+    }
+  }
 
   const handleSave = async () => {
     if (!profileId) return
@@ -77,6 +126,9 @@ export default function ProfileEditPage() {
     }
   }
 
+  const currentAvatar = avatarPreview ?? avatarUrl
+  const initials = fullName?.charAt(0)?.toUpperCase() ?? companyName?.charAt(0)?.toUpperCase() ?? 'U'
+
   if (loading) {
     return (
       <div className="p-6 flex items-center justify-center min-h-[300px]">
@@ -100,6 +152,55 @@ export default function ProfileEditPage() {
           {error}
         </div>
       )}
+
+      {/* Avatar upload */}
+      <div className="bg-white rounded-2xl p-6 shadow-sm mb-4">
+        <label className="text-sm font-semibold text-gray-700 block mb-3">プロフィール画像</label>
+        <div className="flex items-center gap-4">
+          <div className="relative flex-shrink-0">
+            {currentAvatar ? (
+              <div className="w-20 h-20 rounded-2xl overflow-hidden border-2 border-gray-100">
+                <Image
+                  src={currentAvatar}
+                  alt="プロフィール画像"
+                  width={80}
+                  height={80}
+                  className="w-full h-full object-cover"
+                  unoptimized
+                />
+              </div>
+            ) : (
+              <div className="w-20 h-20 rounded-2xl flex items-center justify-center text-white text-2xl font-black"
+                style={{ background: 'linear-gradient(135deg,#f97316,#ea580c)' }}>
+                {initials}
+              </div>
+            )}
+            {uploadingAvatar && (
+              <div className="absolute inset-0 rounded-2xl bg-black/40 flex items-center justify-center">
+                <div className="w-5 h-5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+              </div>
+            )}
+          </div>
+          <div>
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploadingAvatar}
+              className="text-sm border border-orange-300 text-orange-600 px-4 py-2 rounded-xl hover:bg-orange-50 transition font-medium disabled:opacity-50"
+            >
+              {uploadingAvatar ? 'アップロード中...' : '画像を変更'}
+            </button>
+            <p className="text-xs text-gray-400 mt-1.5">JPG・PNG・GIF対応 / 最大5MB</p>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/gif,image/webp"
+              className="hidden"
+              onChange={handleAvatarChange}
+            />
+          </div>
+        </div>
+      </div>
 
       <div className="bg-white rounded-2xl p-6 shadow-sm space-y-5">
         <div>

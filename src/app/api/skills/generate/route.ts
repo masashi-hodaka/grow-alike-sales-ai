@@ -3,7 +3,11 @@ import Anthropic from '@anthropic-ai/sdk'
 import { createServiceClient } from '@/lib/supabase/server'
 import { ProductProfile, SkillCategory } from '@/types/database'
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+export const dynamic = 'force-dynamic'
+
+function getAnthropic() {
+  return new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY ?? '' })
+}
 
 const INDUSTRY_LABELS: Record<string, string> = {
   IT_SAAS: 'SaaS/IT',
@@ -49,8 +53,8 @@ export async function POST(request: NextRequest) {
   }
 ]`
 
-    const message = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
+    const message = await getAnthropic().messages.create({
+      model: 'claude-sonnet-4-6',
       max_tokens: 4000,
       messages: [{ role: 'user', content: prompt }],
     })

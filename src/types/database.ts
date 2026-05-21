@@ -65,6 +65,7 @@ export type Profile = {
   plan?: string
   ai_coach_notes?: string | null
   weak_categories?: string[] | null
+  avatar_url?: string | null
   created_at: string
   updated_at: string
 }

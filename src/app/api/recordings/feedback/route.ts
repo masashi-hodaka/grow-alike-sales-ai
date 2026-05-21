@@ -6,7 +6,9 @@ import { ProductProfile } from '@/types/database'
 
 export const dynamic = 'force-dynamic'
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+function getAnthropic() {
+  return new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY ?? '' })
+}
 // OpenAI client is initialized lazily to avoid build-time errors
 function getOpenAI() {
   return new OpenAI({ apiKey: process.env.OPENAI_API_KEY ?? '' })
@@ -92,8 +94,8 @@ ${transcriptText || '（録音内容なし）'}
   }
 }`
 
-    const message = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
+    const message = await getAnthropic().messages.create({
+      model: 'claude-sonnet-4-6',
       max_tokens: 2000,
       messages: [{ role: 'user', content: prompt }],
     })
@@ -114,7 +116,7 @@ ${transcriptText || '（録音内容なし）'}
       improvements: feedbackData.improvements,
       transcript_text: transcriptText,
       industry_insights: feedbackData.industry_insights,
-      model_version: 'claude-sonnet-4-20250514',
+      model_version: 'claude-sonnet-4-6',
     })
 
     // 録音ステータスをcompletedに更新

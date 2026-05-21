@@ -2,7 +2,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { createClient as createServerClient } from '@/lib/supabase/server'
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+export const dynamic = 'force-dynamic'
+
+function getAnthropic() {
+  return new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY ?? '' })
+}
 
 const WARMTH_DESCRIPTION: Record<string, string> = {
   cold: 'まったく興味がない。忙しい。話を聞く気がない。早く切りたい。',
@@ -85,8 +89,8 @@ export async function POST(request: NextRequest) {
     const systemPrompt = buildSystemPrompt({ ...condition, productContext })
 
     // Claude API呼び出し
-    const response = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
+    const response = await getAnthropic().messages.create({
+      model: 'claude-sonnet-4-6',
       max_tokens: 500,
       system: systemPrompt,
       messages: messages.length > 0 ? messages : [

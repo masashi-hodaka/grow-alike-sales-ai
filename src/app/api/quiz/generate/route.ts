@@ -2,7 +2,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { createClient as createServerClient } from '@/lib/supabase/server'
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+export const dynamic = 'force-dynamic'
+
+function getAnthropic() {
+  return new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY ?? '' })
+}
 
 const CATEGORY_PROMPTS: Record<string, string> = {
   hearing: 'ヒアリング・課題発見（SPIN質問法、ニーズ掘り下げ、傾聴技術）',
@@ -91,8 +95,8 @@ ${productContext}
 - 日本語で出力してください
 - JSONのみを返し、前後に余分なテキストを含めないでください`
 
-    const response = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
+    const response = await getAnthropic().messages.create({
+      model: 'claude-sonnet-4-6',
       max_tokens: 4000,
       messages: [{ role: 'user', content: prompt }],
     })

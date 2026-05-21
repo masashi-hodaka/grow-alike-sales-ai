@@ -67,6 +67,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ message: text })
   } catch (error) {
     console.error('Brainstorm chat error:', error)
-    return NextResponse.json({ error: 'Failed to generate response' }, { status: 500 })
+    // API keyが未設定の場合はわかりやすいメッセージ
+    if (!process.env.ANTHROPIC_API_KEY) {
+      return NextResponse.json({ error: 'ANTHROPIC_API_KEY is not configured' }, { status: 500 })
+    }
+    const msg = error instanceof Error ? error.message : String(error)
+    return NextResponse.json({ error: msg }, { status: 500 })
   }
 }

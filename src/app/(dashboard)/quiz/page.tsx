@@ -8,6 +8,18 @@ import { createClient } from '@/lib/supabase/client'
 type QuizState = 'category' | 'question' | 'result'
 type QuestionType = 'multiple_choice' | 'written' | 'case_study'
 
+type Question = {
+  id: number | string
+  type: QuestionType
+  category: string
+  difficulty: number
+  question: string
+  choices: { label: string; text: string }[]
+  correct: string
+  explanation: string
+  xp: number
+}
+
 const CATEGORIES = [
   { id: 'hearing', label: 'ヒアリング', emoji: '👂', count: 42, weak: true },
   { id: 'opening', label: 'オープニング', emoji: '🚪', count: 38, weak: false },
@@ -26,7 +38,7 @@ const QUESTION_TYPES = [
   { id: 'case_study', label: 'ケーススタディ', emoji: '📖', desc: '実践的なシナリオ問題', xp: 40 },
 ]
 
-const DUMMY_QUESTIONS = [
+const DUMMY_QUESTIONS: Question[] = [
   {
     id: 1,
     type: 'multiple_choice' as QuestionType,
@@ -72,8 +84,11 @@ export default function QuizPage() {
   const [showExplanation, setShowExplanation] = useState(false)
   const [answers, setAnswers] = useState<{ correct: boolean; xp: number }[]>([])
   const [writtenAnswer, setWrittenAnswer] = useState('')
+  const [questions, setQuestions] = useState<Question[]>(DUMMY_QUESTIONS)
+  const [loading, setLoading] = useState(false)
+  const [genError, setGenError] = useState<string | null>(null)
 
-  const question = DUMMY_QUESTIONS[currentQ]
+  const question = questions[currentQ]
   const totalXp = answers.reduce((sum, a) => sum + a.xp, 0)
   const correct = answers.filter(a => a.correct).length
 
@@ -114,9 +129,48 @@ export default function QuizPage() {
     )
   }
 
-  const startQuiz = () => {
-    if (selectedCategories.length === 0) return
-    setState('question')
+  const startQuiz = async () => {
+    if (selectedCategories.length === 0 || loading) return
+    setLoading(true)
+    setGenError(null)
+    try {
+      const res = await fetch('/api/quiz/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          categories: selectedCategories,
+          questionType: selectedType,
+          difficulty: 2,
+          count: 5,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok || !Array.isArray(data.questions) || data.questions.length === 0) {
+        throw new Error(data.error ?? '問題の生成に失敗しました')
+      }
+      const mapped: Question[] = data.questions.map((q: Record<string, unknown>, i: number) => ({
+        id: i + 1,
+        type: (q.question_type as QuestionType) ?? selectedType,
+        category: (q.skill_category as string) ?? selectedCategories[0],
+        difficulty: (q.difficulty as number) ?? 2,
+        question: (q.question_text as string) ?? '',
+        choices: Array.isArray(q.choices) ? (q.choices as { label: string; text: string }[]) : [],
+        correct: (q.correct_answer as string) ?? '',
+        explanation: (q.explanation as string) ?? '',
+        xp: (q.xp_reward as number) ?? 10,
+      }))
+      setQuestions(mapped)
+      setCurrentQ(0)
+      setAnswers([])
+      setSelectedAnswer(null)
+      setShowExplanation(false)
+      setWrittenAnswer('')
+      setState('question')
+    } catch (e) {
+      setGenError(e instanceof Error ? e.message : '問題の生成に失敗しました。もう一度お試しください。')
+    } finally {
+      setLoading(false)
+    }
   }
 
   const submitAnswer = () => {
@@ -127,7 +181,7 @@ export default function QuizPage() {
   }
 
   const nextQuestion = () => {
-    if (currentQ + 1 >= DUMMY_QUESTIONS.length) {
+    if (currentQ + 1 >= questions.length) {
       // answers には submitAnswer() で最後の回答が既に追加済み
       const earned = answers.reduce((sum, a) => sum + a.xp, 0)
       saveXpToDb(earned)
@@ -209,10 +263,18 @@ export default function QuizPage() {
           </div>
         </div>
 
-        <button onClick={startQuiz} disabled={selectedCategories.length === 0}
+        {genError && (
+          <div className="mb-3 p-3 rounded-xl bg-red-50 border border-red-200 text-sm text-red-600">
+            ⚠️ {genError}
+          </div>
+        )}
+
+        <button onClick={startQuiz} disabled={selectedCategories.length === 0 || loading}
           className="w-full py-4 rounded-xl text-white font-bold text-base transition disabled:opacity-40"
           style={{ background: 'linear-gradient(135deg,#f97316,#ea580c)' }}>
-          {selectedCategories.length > 0
+          {loading
+            ? 'AIが問題を生成中... ⏳'
+            : selectedCategories.length > 0
             ? `${selectedCategories.length}カテゴリで練習開始 →`
             : 'カテゴリを選択してください'}
         </button>
@@ -227,10 +289,10 @@ export default function QuizPage() {
         <div className="flex items-center gap-3 mb-6">
           <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
             <div className="h-full rounded-full transition-all"
-              style={{ width: `${((currentQ) / DUMMY_QUESTIONS.length) * 100}%`, background: 'linear-gradient(90deg,#f97316,#fbbf24)' }} />
+              style={{ width: `${((currentQ) / questions.length) * 100}%`, background: 'linear-gradient(90deg,#f97316,#fbbf24)' }} />
           </div>
           <span className="text-sm text-gray-500 font-medium whitespace-nowrap">
-            {currentQ + 1} / {DUMMY_QUESTIONS.length}
+            {currentQ + 1} / {questions.length}
           </span>
         </div>
 
@@ -306,7 +368,7 @@ export default function QuizPage() {
           <button onClick={nextQuestion}
             className="w-full py-3.5 rounded-xl text-white font-bold text-sm transition"
             style={{ background: 'linear-gradient(135deg,#1e293b,#334155)' }}>
-            {currentQ + 1 >= DUMMY_QUESTIONS.length ? '結果を見る →' : '次の問題へ →'}
+            {currentQ + 1 >= questions.length ? '結果を見る →' : '次の問題へ →'}
           </button>
         )}
       </div>
@@ -317,12 +379,12 @@ export default function QuizPage() {
   return (
     <div className="p-6 max-w-2xl">
       <h1 className="text-2xl font-bold text-gray-900 mb-1">問題練習 完了！</h1>
-      <p className="text-gray-500 text-sm mb-6">{DUMMY_QUESTIONS.length}問を解きました</p>
+      <p className="text-gray-500 text-sm mb-6">{questions.length}問を解きました</p>
 
       <div className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-2xl p-6 text-white text-center mb-5">
         <p className="text-white/70 text-sm mb-1">正答率</p>
-        <p className="text-6xl font-black mb-2">{Math.round((correct / DUMMY_QUESTIONS.length) * 100)}%</p>
-        <p className="text-white/70 text-sm mb-4">{correct} / {DUMMY_QUESTIONS.length} 問正解</p>
+        <p className="text-6xl font-black mb-2">{Math.round((correct / questions.length) * 100)}%</p>
+        <p className="text-white/70 text-sm mb-4">{correct} / {questions.length} 問正解</p>
         <div className="inline-flex items-center gap-2 bg-white/20 rounded-full px-4 py-1.5">
           <span className="text-yellow-300 font-bold">+{totalXp} XP</span>
           <span className="text-white/70 text-sm">獲得！</span>

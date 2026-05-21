@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
@@ -84,6 +85,7 @@ const NAV_ITEMS = [
 export default function Sidebar({ profile, userLevel }: { profile: Profile; userLevel: UserLevel | null }) {
   const pathname = usePathname()
   const router = useRouter()
+  const [open, setOpen] = useState(false)
 
   const level = userLevel?.current_level ?? 1
   const currentXp = userLevel?.current_xp ?? 0
@@ -101,11 +103,36 @@ export default function Sidebar({ profile, userLevel }: { profile: Profile; user
   const initials = profile.full_name?.charAt(0)?.toUpperCase() ?? profile.company_name?.charAt(0)?.toUpperCase() ?? 'U'
 
   return (
-    <div className="fixed top-0 left-0 h-full w-[228px] flex flex-col z-20"
-      style={{ background: 'linear-gradient(180deg,#1e293b 0%,#0f172a 100%)' }}>
+    <>
+      {/* モバイル用トップバー（md未満で表示） */}
+      <div className="md:hidden fixed top-0 left-0 right-0 h-14 z-30 flex items-center justify-between px-4"
+        style={{ background: 'linear-gradient(90deg,#1e293b,#0f172a)' }}>
+        <button onClick={() => setOpen(true)} aria-label="メニューを開く" className="text-white p-1 -ml-1">
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        </button>
+        <div className="flex items-center gap-2">
+          <div className="w-7 h-7 rounded-lg flex items-center justify-center text-base"
+            style={{ background: 'linear-gradient(135deg,#f97316,#ea580c)' }}>
+            🔥
+          </div>
+          <span className="text-white font-bold text-sm">Grow Alike</span>
+        </div>
+        <div className="w-8" />
+      </div>
+
+      {/* モバイルでメニューを開いたときの背景オーバーレイ */}
+      {open && (
+        <div className="md:hidden fixed inset-0 bg-black/50 z-30" onClick={() => setOpen(false)} />
+      )}
+
+      {/* サイドバー本体 */}
+      <div className={`fixed top-0 left-0 h-full w-[228px] flex flex-col z-40 transform transition-transform duration-300 md:translate-x-0 ${open ? 'translate-x-0' : '-translate-x-full'}`}
+        style={{ background: 'linear-gradient(180deg,#1e293b 0%,#0f172a 100%)' }}>
 
       {/* Logo */}
-      <div className="px-5 py-4 border-b border-white/10">
+      <div className="px-5 py-4 border-b border-white/10 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
           <div className="w-9 h-9 rounded-xl flex items-center justify-center text-xl"
             style={{ background: 'linear-gradient(135deg,#f97316,#ea580c)' }}>
@@ -116,6 +143,12 @@ export default function Sidebar({ profile, userLevel }: { profile: Profile; user
             <p className="text-orange-400 text-xs font-medium">Sales AI</p>
           </div>
         </div>
+        {/* モバイル用の閉じるボタン */}
+        <button onClick={() => setOpen(false)} aria-label="メニューを閉じる" className="md:hidden text-white/60 hover:text-white p-1">
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
       </div>
 
       {/* User info + XP bar */}
@@ -163,7 +196,7 @@ export default function Sidebar({ profile, userLevel }: { profile: Profile; user
         {NAV_ITEMS.map(item => {
           const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
           return (
-            <Link key={item.href} href={item.href}
+            <Link key={item.href} href={item.href} onClick={() => setOpen(false)}
               className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
                 isActive
                   ? 'text-white'
@@ -196,7 +229,7 @@ export default function Sidebar({ profile, userLevel }: { profile: Profile; user
               {(profile.plan ?? 'free').toUpperCase()} プラン
             </span>
           )}
-          <Link href="/profile" className="text-xs text-orange-400 hover:text-orange-300 transition">
+          <Link href="/profile" onClick={() => setOpen(false)} className="text-xs text-orange-400 hover:text-orange-300 transition">
             {(profile.plan ?? 'free') === 'beta' ? 'プラン詳細' : 'アップグレード'}
           </Link>
         </div>
@@ -208,6 +241,7 @@ export default function Sidebar({ profile, userLevel }: { profile: Profile; user
           ログアウト
         </button>
       </div>
-    </div>
+      </div>
+    </>
   )
 }

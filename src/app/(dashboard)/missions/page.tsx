@@ -3,39 +3,11 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { UserMissionProgress, Mission } from '@/types/database'
 
-// ダミー追加ミッション（スト リーク・弱点・AI推薦）
-const DUMMY_AI_MISSIONS = [
-  {
-    id: 'ai-1',
-    title: '弱点克服チャレンジ',
-    description: 'AIが検出した弱点カテゴリ「ヒアリング」の問題を5問正解する',
-    type: 'ai_recommended',
-    emoji: '🎯',
-    xp: 120,
-    progress: 2,
-    target: 5,
-    link: '/quiz?category=hearing&weak=true',
-    color: '#ef4444',
-  },
-  {
-    id: 'ai-2',
-    title: 'ロープレ連続達成',
-    description: '今週中にAIロープレを3回完了する',
-    type: 'ai_recommended',
-    emoji: '🎭',
-    xp: 200,
-    progress: 1,
-    target: 3,
-    link: '/roleplay',
-    color: '#8b5cf6',
-  },
-]
-
 const STREAK_MILESTONES = [
-  { days: 3,  reward: '50 XP',  emoji: '🌱', achieved: true },
-  { days: 7,  reward: '150 XP', emoji: '🔥', achieved: false },
-  { days: 14, reward: '400 XP', emoji: '⚡', achieved: false },
-  { days: 30, reward: '1000 XP',emoji: '👑', achieved: false },
+  { days: 3,  reward: '50 XP',  emoji: '🌱' },
+  { days: 7,  reward: '150 XP', emoji: '🔥' },
+  { days: 14, reward: '400 XP', emoji: '⚡' },
+  { days: 30, reward: '1000 XP',emoji: '👑' },
 ]
 
 export default async function MissionsPage() {
@@ -61,7 +33,7 @@ export default async function MissionsPage() {
   const weeklyMissions = (allMissions ?? []).filter(m => m.mission_type === 'weekly')
   const challengeMissions = (allMissions ?? []).filter(m => m.mission_type === 'challenge')
 
-  const streak = (profile as unknown as { current_streak?: number }).current_streak ?? 5
+  const streak = (profile as unknown as { current_streak?: number }).current_streak ?? 0
 
   // 今日のミッション完了数
   const todayCompleted = dailyMissions.filter(m => getProgress(m.id, dailyKey)?.is_completed).length
@@ -124,36 +96,20 @@ export default async function MissionsPage() {
               <h2 className="font-bold text-gray-900">AIおすすめミッション</h2>
               <span className="ml-auto text-xs bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full font-medium">あなた専用</span>
             </div>
-            <div className="space-y-3">
-              {DUMMY_AI_MISSIONS.map(m => {
-                const pct = Math.min(100, Math.round((m.progress / m.target) * 100))
-                return (
-                  <div key={m.id} className="p-4 rounded-xl border border-gray-100 bg-gray-50 hover:bg-white transition">
-                    <div className="flex items-start gap-3 mb-2">
-                      <span className="text-xl">{m.emoji}</span>
-                      <div className="flex-1">
-                        <div className="flex justify-between items-start">
-                          <p className="font-semibold text-sm text-gray-800">{m.title}</p>
-                          <span className="font-bold text-sm ml-2 whitespace-nowrap" style={{ color: m.color }}>+{m.xp} XP</span>
-                        </div>
-                        <p className="text-xs text-gray-500 mt-0.5">{m.description}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
-                        <div className="h-full rounded-full transition-all"
-                          style={{ width: `${pct}%`, background: m.color }} />
-                      </div>
-                      <span className="text-xs text-gray-500">{m.progress}/{m.target}</span>
-                      <Link href={m.link}
-                        className="text-xs text-white px-3 py-1 rounded-lg font-medium whitespace-nowrap"
-                        style={{ background: m.color }}>
-                        挑戦する
-                      </Link>
-                    </div>
-                  </div>
-                )
-              })}
+            <div className="text-center py-6 text-gray-400">
+              <p className="text-2xl mb-1">🤖</p>
+              <p className="text-sm font-medium text-gray-600">まだおすすめミッションがありません</p>
+              <p className="text-xs mt-1">学習を進めると、AIがあなた専用のミッションを提案します</p>
+              <div className="flex gap-2 justify-center mt-3">
+                <Link href="/quiz" className="text-xs text-white px-3 py-1.5 rounded-lg font-medium"
+                  style={{ background: 'linear-gradient(135deg,#f97316,#ea580c)' }}>
+                  問題練習を始める
+                </Link>
+                <Link href="/roleplay" className="text-xs text-white px-3 py-1.5 rounded-lg font-medium"
+                  style={{ background: 'linear-gradient(135deg,#8b5cf6,#6d28d9)' }}>
+                  ロープレを始める
+                </Link>
+              </div>
             </div>
           </div>
 
@@ -280,23 +236,26 @@ export default async function MissionsPage() {
           <div className="bg-white rounded-2xl p-5 shadow-sm">
             <h3 className="font-bold text-gray-800 mb-3 text-sm">ストリーク報酬</h3>
             <div className="space-y-2.5">
-              {STREAK_MILESTONES.map(m => (
+              {STREAK_MILESTONES.map(m => {
+                const achieved = streak >= m.days
+                return (
                 <div key={m.days}
-                  className={`flex items-center gap-2.5 p-2.5 rounded-xl transition ${m.achieved ? 'bg-amber-50 border border-amber-200' : 'bg-gray-50'}`}>
+                  className={`flex items-center gap-2.5 p-2.5 rounded-xl transition ${achieved ? 'bg-amber-50 border border-amber-200' : 'bg-gray-50'}`}>
                   <span className="text-xl">{m.emoji}</span>
                   <div className="flex-1">
-                    <p className={`font-semibold text-sm ${m.achieved ? 'text-amber-700' : 'text-gray-600'}`}>
+                    <p className={`font-semibold text-sm ${achieved ? 'text-amber-700' : 'text-gray-600'}`}>
                       {m.days}日連続
                     </p>
-                    <p className={`text-xs ${m.achieved ? 'text-amber-500' : 'text-gray-400'}`}>{m.reward}</p>
+                    <p className={`text-xs ${achieved ? 'text-amber-500' : 'text-gray-400'}`}>{m.reward}</p>
                   </div>
-                  {m.achieved ? (
+                  {achieved ? (
                     <span className="text-amber-500 text-sm font-bold">✓</span>
                   ) : (
-                    <span className="text-xs text-gray-400">Lv{streak}/{m.days}</span>
+                    <span className="text-xs text-gray-400">{streak}/{m.days}</span>
                   )}
                 </div>
-              ))}
+                )
+              })}
             </div>
           </div>
 

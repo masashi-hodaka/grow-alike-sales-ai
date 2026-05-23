@@ -1,7 +1,9 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { createClient } from '@/lib/supabase/client'
 
 type Mode = 'chat' | 'voice'
 type Step = 'mode' | 'select' | 'session' | 'result'
@@ -29,21 +31,20 @@ const PERSONAS = [
 
 const INDUSTRIES = ['IT・SaaS', '製造業', '小売・EC', '金融・保険', '医療・ヘルスケア', '不動産', 'その他']
 
-const DUMMY_RESULT = {
-  overall: 74,
-  scores: {
-    opening: 85,
-    hearing: 62,
-    proposition: 78,
-    objection_handling: 71,
-    closing: 68,
-  },
-  strengths: ['オープニングのトーンが自然で好印象でした', 'お客様のペルソナに合わせた言葉選びができていました'],
-  improvements: [
-    '「予算がない」という反論に対して即座に価格の話に飛んでしまいました。まずは課題・損失の深掘りが必要です',
-    '質問が表面的で、お客様の本音を引き出せていません。「なぜですか？」を意識的に使いましょう',
-  ],
-  xpEarned: 85,
+type RoleplayFeedback = {
+  overall_score: number
+  feedback_summary: string
+  strengths: string[]
+  improvements: string[]
+  skill_scores: {
+    opening: number
+    hearing: number
+    proposition: number
+    objection_handling: number
+    closing: number
+  }
+  xp_earned: number
+  ai_coach_note: string
 }
 
 // ─── Mode Selection ─────────────────────────────────────────────────────────
@@ -115,26 +116,10 @@ function ModeSelect({ onSelect }: { onSelect: (mode: Mode) => void }) {
       {/* Recent sessions */}
       <div className="mt-7 bg-white rounded-2xl p-5 shadow-sm">
         <h2 className="font-bold text-gray-800 mb-3">最近のロープレ結果</h2>
-        <div className="space-y-2">
-          {[
-            { persona: '中小企業 社長', score: 74, date: '2026/05/11', xp: 85, mode: 'chat' },
-            { persona: 'スタートアップ CTO', score: 81, date: '2026/05/09', xp: 95, mode: 'voice' },
-          ].map((s, i) => (
-            <div key={i} className="flex items-center gap-3 p-3 rounded-xl bg-gray-50">
-              <div className="w-10 h-10 rounded-xl bg-violet-100 text-xl flex items-center justify-center">
-                {s.mode === 'voice' ? '🎙️' : '💬'}
-              </div>
-              <div className="flex-1">
-                <p className="text-sm font-medium text-gray-800">{s.persona}</p>
-                <p className="text-xs text-gray-400">{s.date} · {s.mode === 'voice' ? '音声' : 'チャット'}</p>
-              </div>
-              <div className="text-right">
-                <span className="font-bold text-gray-800">{s.score}</span>
-                <span className="text-gray-400 text-sm">点</span>
-                <p className="text-xs text-orange-500 font-medium">+{s.xp} XP</p>
-              </div>
-            </div>
-          ))}
+        <div className="text-center py-6 text-gray-400">
+          <p className="text-3xl mb-2">🎭</p>
+          <p className="text-sm font-medium text-gray-600">まだロープレ結果がありません</p>
+          <p className="text-xs mt-1">上のスタイルを選んで、最初のロープレを始めましょう</p>
         </div>
       </div>
     </div>
@@ -289,7 +274,7 @@ function ChatSession({
   onEnd,
 }: {
   condition: Condition
-  onEnd: () => void
+  onEnd: (messages: Message[]) => void
 }) {
   const persona = PERSONAS.find(p => p.id === condition.persona)
   const [messages, setMessages] = useState<Message[]>([
@@ -354,7 +339,7 @@ function ChatSession({
         </div>
         <div className="flex items-center gap-3">
           <div className="text-xs text-gray-400 bg-gray-100 px-3 py-1 rounded-full">🕐 {formatTime(elapsed)}</div>
-          <button onClick={onEnd}
+          <button onClick={() => onEnd(messages)}
             className="text-xs bg-red-500 text-white px-4 py-1.5 rounded-lg font-medium hover:bg-red-600 transition">
             終了してフィードバックを見る
           </button>
@@ -418,7 +403,7 @@ function VoiceSession({
   onEnd,
 }: {
   condition: Condition
-  onEnd: () => void
+  onEnd: (messages: Message[]) => void
 }) {
   const persona = PERSONAS.find(p => p.id === condition.persona)
   const [messages, setMessages] = useState<Message[]>([
@@ -546,7 +531,7 @@ function VoiceSession({
         </div>
         <div className="flex items-center gap-3">
           <div className="text-xs text-gray-400 bg-gray-100 px-3 py-1 rounded-full">🕐 {formatTime(elapsed)}</div>
-          <button onClick={onEnd}
+          <button onClick={() => onEnd(messages)}
             className="text-xs bg-red-500 text-white px-4 py-1.5 rounded-lg font-medium hover:bg-red-600 transition">
             終了してフィードバックを見る
           </button>
@@ -651,9 +636,104 @@ function VoiceSession({
 
 // ─── Result ──────────────────────────────────────────────────────────────────
 
-function Result({ onRetry }: { onRetry: () => void }) {
+function Result({ condition, messages, onRetry }: { condition: Condition; messages: Message[]; onRetry: () => void }) {
+  const router = useRouter()
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [feedback, setFeedback] = useState<RoleplayFeedback | null>(null)
+  const savedRef = useRef(false)
+
+  const saveXp = async (earned: number) => {
+    try {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      const { data: profile } = await supabase.from('profiles').select('id').eq('user_id', user.id).single()
+      if (!profile) return
+      const { data: level } = await supabase.from('user_levels').select('current_xp, total_xp_earned').eq('profile_id', profile.id).single()
+      if (!level) return
+      await supabase.from('user_levels').update({
+        current_xp: (level.current_xp ?? 0) + earned,
+        total_xp_earned: (level.total_xp_earned ?? 0) + earned,
+      }).eq('profile_id', profile.id)
+    } catch { /* XP保存失敗は無視 */ }
+  }
+
+  useEffect(() => {
+    const userTurns = messages.filter(m => m.role === 'user').length
+    if (userTurns === 0) {
+      setError('会話がほとんど行われませんでした。もう一度ロープレを始めて、お客様役と会話してみましょう。')
+      setLoading(false)
+      return
+    }
+    const run = async () => {
+      try {
+        const res = await fetch('/api/roleplay/feedback', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            conversation: messages.map(m => ({ role: m.role, content: m.content })),
+            condition,
+          }),
+        })
+        const data = await res.json()
+        if (!res.ok) throw new Error(data.error ?? 'フィードバックの生成に失敗しました')
+        setFeedback(data as RoleplayFeedback)
+        if (!savedRef.current && typeof data.xp_earned === 'number' && data.xp_earned > 0) {
+          savedRef.current = true
+          await saveXp(data.xp_earned)
+          router.refresh()
+        }
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'フィードバックの生成に失敗しました。もう一度お試しください。')
+      } finally {
+        setLoading(false)
+      }
+    }
+    run()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   const scoreLabel = (s: number) => s >= 85 ? '優秀' : s >= 70 ? '良好' : '要改善'
   const scoreColor = (s: number) => s >= 85 ? '#22c55e' : s >= 70 ? '#f97316' : '#ef4444'
+
+  if (loading) {
+    return (
+      <div className="p-6 max-w-2xl">
+        <h1 className="text-2xl font-bold text-gray-900 mb-1">ロープレ完了！</h1>
+        <p className="text-gray-500 text-sm mb-6">AIがあなたの会話を分析しています...</p>
+        <div className="bg-white rounded-2xl p-12 shadow-sm flex flex-col items-center">
+          <div className="flex gap-1.5 mb-4">
+            {[0, 1, 2].map(i => (
+              <div key={i} className="w-3 h-3 bg-violet-500 rounded-full animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />
+            ))}
+          </div>
+          <p className="text-gray-500 text-sm">会話を分析して、スコアとフィードバックを作成中...</p>
+          <p className="text-gray-400 text-xs mt-1">少々お待ちください（10〜20秒ほど）</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error || !feedback) {
+    return (
+      <div className="p-6 max-w-2xl">
+        <h1 className="text-2xl font-bold text-gray-900 mb-1">ロープレ完了</h1>
+        <p className="text-gray-500 text-sm mb-6">フィードバックを表示できませんでした</p>
+        <div className="bg-orange-50 border border-orange-200 rounded-2xl p-6 text-center">
+          <p className="text-3xl mb-2">😅</p>
+          <p className="text-sm text-orange-700 leading-relaxed">{error ?? 'フィードバックの生成に失敗しました。'}</p>
+        </div>
+        <button onClick={onRetry}
+          className="mt-5 w-full text-white py-3 rounded-xl font-semibold text-sm transition"
+          style={{ background: 'linear-gradient(135deg,#f97316,#ea580c)' }}>
+          もう一度ロープレ
+        </button>
+      </div>
+    )
+  }
+
+  const skillEntries = Object.entries(feedback.skill_scores ?? {})
 
   return (
     <div className="p-6 max-w-2xl">
@@ -662,45 +742,55 @@ function Result({ onRetry }: { onRetry: () => void }) {
 
       <div className="bg-gradient-to-r from-violet-600 to-purple-700 rounded-2xl p-6 text-white mb-5 text-center">
         <p className="text-white/70 text-sm mb-2">総合スコア</p>
-        <p className="text-7xl font-black mb-2">{DUMMY_RESULT.overall}</p>
+        <p className="text-7xl font-black mb-2">{feedback.overall_score}</p>
         <p className="text-white/70">点 / 100</p>
         <div className="mt-4 inline-flex items-center gap-2 bg-white/20 rounded-full px-4 py-1.5">
-          <span className="text-yellow-300 font-bold">+{DUMMY_RESULT.xpEarned} XP</span>
+          <span className="text-yellow-300 font-bold">+{feedback.xp_earned} XP</span>
           <span className="text-white/60 text-sm">獲得！</span>
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl p-5 shadow-sm mb-4">
-        <h2 className="font-bold text-gray-900 mb-4">スキル別スコア</h2>
-        <div className="space-y-3">
-          {Object.entries(DUMMY_RESULT.scores).map(([key, val]) => {
-            const labels: Record<string, string> = {
-              opening: 'オープニング', hearing: 'ヒアリング',
-              proposition: '提案力', objection_handling: '反論処理', closing: 'クロージング',
-            }
-            return (
-              <div key={key}>
-                <div className="flex justify-between text-sm mb-1">
-                  <span className="font-medium text-gray-700">{labels[key]}</span>
-                  <span className="font-bold" style={{ color: scoreColor(val) }}>
-                    {val}点 ({scoreLabel(val)})
-                  </span>
-                </div>
-                <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                  <div className="h-full rounded-full transition-all duration-700"
-                    style={{ width: `${val}%`, background: scoreColor(val) }} />
-                </div>
-              </div>
-            )
-          })}
+      {feedback.feedback_summary && (
+        <div className="bg-white rounded-2xl p-5 shadow-sm mb-4">
+          <h2 className="font-bold text-gray-900 mb-2">総評</h2>
+          <p className="text-sm text-gray-700 leading-relaxed">{feedback.feedback_summary}</p>
         </div>
-      </div>
+      )}
+
+      {skillEntries.length > 0 && (
+        <div className="bg-white rounded-2xl p-5 shadow-sm mb-4">
+          <h2 className="font-bold text-gray-900 mb-4">スキル別スコア</h2>
+          <div className="space-y-3">
+            {skillEntries.map(([key, val]) => {
+              const labels: Record<string, string> = {
+                opening: 'オープニング', hearing: 'ヒアリング',
+                proposition: '提案力', objection_handling: '反論処理', closing: 'クロージング',
+              }
+              const v = Number(val) || 0
+              return (
+                <div key={key}>
+                  <div className="flex justify-between text-sm mb-1">
+                    <span className="font-medium text-gray-700">{labels[key] ?? key}</span>
+                    <span className="font-bold" style={{ color: scoreColor(v) }}>
+                      {v}点 ({scoreLabel(v)})
+                    </span>
+                  </div>
+                  <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                    <div className="h-full rounded-full transition-all duration-700"
+                      style={{ width: `${v}%`, background: scoreColor(v) }} />
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-2 gap-4 mb-5">
         <div className="bg-green-50 rounded-2xl p-4">
           <h3 className="font-bold text-green-800 text-sm mb-2">✨ 良かった点</h3>
           <ul className="space-y-1.5">
-            {DUMMY_RESULT.strengths.map((s, i) => (
+            {(feedback.strengths ?? []).map((s, i) => (
               <li key={i} className="text-xs text-green-700 leading-relaxed">・{s}</li>
             ))}
           </ul>
@@ -708,22 +798,33 @@ function Result({ onRetry }: { onRetry: () => void }) {
         <div className="bg-orange-50 rounded-2xl p-4">
           <h3 className="font-bold text-orange-800 text-sm mb-2">🎯 改善ポイント</h3>
           <ul className="space-y-1.5">
-            {DUMMY_RESULT.improvements.map((s, i) => (
+            {(feedback.improvements ?? []).map((s, i) => (
               <li key={i} className="text-xs text-orange-700 leading-relaxed">・{s}</li>
             ))}
           </ul>
         </div>
       </div>
 
+      {feedback.ai_coach_note && (
+        <div className="bg-white rounded-2xl p-4 shadow-sm border border-orange-100 mb-5 flex items-start gap-3">
+          <div className="w-8 h-8 rounded-full text-lg flex items-center justify-center flex-shrink-0"
+            style={{ background: 'linear-gradient(135deg,#f97316,#ea580c)' }}>🤖</div>
+          <div>
+            <p className="font-bold text-gray-900 text-sm mb-0.5">AIコーチからの一言</p>
+            <p className="text-sm text-gray-700 leading-relaxed">{feedback.ai_coach_note}</p>
+          </div>
+        </div>
+      )}
+
       <div className="flex gap-3">
         <button onClick={onRetry}
           className="flex-1 border border-gray-200 text-gray-700 py-3 rounded-xl font-semibold text-sm hover:bg-gray-50 transition">
           もう一度ロープレ
         </button>
-        <Link href="/quiz?category=hearing"
+        <Link href="/quiz"
           className="flex-1 text-center text-white py-3 rounded-xl font-semibold text-sm transition"
           style={{ background: 'linear-gradient(135deg,#f97316,#ea580c)' }}>
-          弱点の問題を解く
+          問題練習で実力アップ
         </Link>
       </div>
     </div>
@@ -735,6 +836,7 @@ function Result({ onRetry }: { onRetry: () => void }) {
 export default function RoleplayPage() {
   const [mode, setMode] = useState<Mode>('chat')
   const [step, setStep] = useState<Step>('mode')
+  const [sessionMessages, setSessionMessages] = useState<Message[]>([])
   const [condition, setCondition] = useState<Condition>({
     persona: '',
     difficulty: 3,
@@ -749,8 +851,12 @@ export default function RoleplayPage() {
   }
 
   const handleStart = () => setStep('session')
-  const handleEnd = () => setStep('result')
+  const handleEnd = (msgs: Message[]) => {
+    setSessionMessages(msgs)
+    setStep('result')
+  }
   const handleRetry = () => {
+    setSessionMessages([])
     setCondition({ persona: '', difficulty: 3, industry: 'IT・SaaS', warmth: 'cold', scenario: '' })
     setStep('mode')
   }
@@ -772,5 +878,5 @@ export default function RoleplayPage() {
       ? <VoiceSession condition={condition} onEnd={handleEnd} />
       : <ChatSession condition={condition} onEnd={handleEnd} />
   }
-  return <Result onRetry={handleRetry} />
+  return <Result condition={condition} messages={sessionMessages} onRetry={handleRetry} />
 }

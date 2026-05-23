@@ -14,16 +14,6 @@ function getXpProgress(level: number, currentXp: number) {
   return Math.min(100, Math.round(((currentXp - currentThreshold) / (nextThreshold - currentThreshold)) * 100))
 }
 
-// ダミー弱点データ（実装後はDBから取得）
-const DUMMY_WEAK_CATEGORIES = [
-  { name: 'ヒアリング', score: 52, color: '#ef4444' },
-  { name: 'クロージング', score: 61, color: '#f97316' },
-  { name: '反論処理', score: 67, color: '#f59e0b' },
-]
-
-const DUMMY_AI_COMMENT =
-  '先週と比べてオープニングのスコアが+8点改善しました！ ただ、ヒアリングフェーズで質問が表面的になる傾向があります。「なぜ？」を3回繰り返す深掘り練習を試してみましょう。'
-
 const QUICK_ACTIONS = [
   {
     href: '/quiz',
@@ -67,11 +57,13 @@ export default async function DashboardPage() {
     { data: usageStats },
     { data: missions },
     { data: recentRecordings },
+    { data: topRanking },
   ] = await Promise.all([
     supabase.from('user_levels').select('*').eq('profile_id', profile.id).single(),
     supabase.from('usage_stats').select('*').eq('profile_id', profile.id).order('year_month', { ascending: false }).limit(1).single(),
     supabase.from('user_mission_progress').select('*, mission:missions(*)').eq('profile_id', profile.id).eq('is_completed', false).limit(3),
     supabase.from('recordings').select('*, ai_feedbacks(scores)').eq('profile_id', profile.id).eq('status', 'completed').order('created_at', { ascending: false }).limit(3),
+    supabase.from('user_levels').select('current_xp, total_xp_earned, profile:profiles(id, full_name, company_name)').order('total_xp_earned', { ascending: false }).limit(3),
   ])
 
   const level = (userLevel as UserLevel | null)?.current_level ?? 1
@@ -79,10 +71,14 @@ export default async function DashboardPage() {
   const totalXp = (userLevel as UserLevel | null)?.total_xp_earned ?? 0
   const xpProgress = getXpProgress(level, currentXp)
   const xpToNext = (LEVEL_THRESHOLDS[level] ?? 0) - currentXp
-  const streak = profile.current_streak ?? 3  // dummy fallback
+  const streak = profile.current_streak ?? 0
   const recordingCount = (usageStats as UsageStats | null)?.recording_count ?? 0
 
   const firstName = profile.full_name?.split(' ')[0] ?? profile.company_name ?? 'あなた'
+
+  type RankRow = { current_xp: number; total_xp_earned: number; profile: { id: string; full_name: string | null; company_name: string | null } | null }
+  const rankingRows = (topRanking as RankRow[] | null) ?? []
+  const medals = ['🥇', '🥈', '🥉']
 
   return (
     <div className="p-6 max-w-5xl">
@@ -158,10 +154,6 @@ export default async function DashboardPage() {
               <p className="text-2xl font-bold">{recordingCount}</p>
               <p className="text-white/40 text-xs">録音本数</p>
             </div>
-            <div>
-              <p className="text-2xl font-bold">+12%</p>
-              <p className="text-white/40 text-xs">週間成長率</p>
-            </div>
           </div>
         </div>
       </div>
@@ -194,16 +186,16 @@ export default async function DashboardPage() {
               </div>
               <div>
                 <p className="font-bold text-gray-900 text-sm">AIコーチからのアドバイス</p>
-                <p className="text-gray-400 text-xs">あなたの学習パターンを分析しました</p>
+                <p className="text-gray-400 text-xs">学習を進めるとアドバイスが届きます</p>
               </div>
             </div>
             <p className="text-gray-700 text-sm leading-relaxed bg-orange-50 rounded-xl p-3">
-              {DUMMY_AI_COMMENT}
+              まだ学習データが少ないため、アドバイスを生成できません。問題練習やAIロープレに挑戦すると、あなたの傾向に合わせたアドバイスが届きます。
             </p>
             <div className="flex gap-2 mt-3">
-              <Link href="/quiz?category=hearing"
+              <Link href="/quiz"
                 className="text-xs bg-orange-500 text-white px-3 py-1.5 rounded-lg font-medium hover:bg-orange-600 transition">
-                ヒアリング練習へ
+                問題練習へ
               </Link>
               <Link href="/roleplay"
                 className="text-xs border border-gray-200 text-gray-600 px-3 py-1.5 rounded-lg font-medium hover:bg-gray-50 transition">
@@ -218,23 +210,14 @@ export default async function DashboardPage() {
               <h2 className="font-bold text-gray-900">弱点分析</h2>
               <Link href="/skills" className="text-orange-500 text-sm hover:text-orange-600">詳細を見る →</Link>
             </div>
-            <div className="space-y-3">
-              {DUMMY_WEAK_CATEGORIES.map(cat => (
-                <div key={cat.name}>
-                  <div className="flex justify-between text-sm mb-1">
-                    <span className="font-medium text-gray-700">{cat.name}</span>
-                    <span className="font-bold" style={{ color: cat.color }}>{cat.score}点</span>
-                  </div>
-                  <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                    <div className="h-full rounded-full transition-all duration-700"
-                      style={{ width: `${cat.score}%`, background: cat.color }} />
-                  </div>
-                </div>
-              ))}
+            <div className="text-center py-6 text-gray-400">
+              <p className="text-3xl mb-2">📊</p>
+              <p className="text-sm font-medium text-gray-600">まだ弱点データがありません</p>
+              <p className="text-xs mt-1">問題練習やロープレで実力を測定すると、弱点が表示されます</p>
             </div>
-            <Link href="/quiz?weak=true"
+            <Link href="/quiz"
               className="mt-4 w-full py-2.5 rounded-xl text-sm font-semibold text-orange-600 border border-orange-200 hover:bg-orange-50 transition flex items-center justify-center gap-1">
-              弱点カテゴリの問題を解く ✨
+              問題練習を始める ✨
             </Link>
           </div>
 
@@ -326,19 +309,25 @@ export default async function DashboardPage() {
               <h2 className="font-bold text-gray-900">ランキング</h2>
               <Link href="/leaderboard" className="text-orange-500 text-xs hover:text-orange-600">すべて</Link>
             </div>
-            <div className="space-y-2">
-              {[
-                { rank: 1, name: '田中 拓也', xp: 4200, emoji: '🥇' },
-                { rank: 2, name: '佐藤 美咲', xp: 3800, emoji: '🥈' },
-                { rank: 3, name: firstName, xp: currentXp, emoji: '🥉', isMe: true },
-              ].map(r => (
-                <div key={r.rank} className={`flex items-center gap-2.5 p-2 rounded-xl text-sm ${r.isMe ? 'bg-orange-50 border border-orange-200' : ''}`}>
-                  <span className="text-lg">{r.emoji}</span>
-                  <span className={`flex-1 font-medium truncate ${r.isMe ? 'text-orange-700' : 'text-gray-700'}`}>{r.name}</span>
-                  <span className={`text-xs font-bold ${r.isMe ? 'text-orange-600' : 'text-gray-500'}`}>{r.xp.toLocaleString()}</span>
-                </div>
-              ))}
-            </div>
+            {rankingRows.length > 0 ? (
+              <div className="space-y-2">
+                {rankingRows.map((r, i) => {
+                  const isMe = r.profile?.id === profile.id
+                  const name = r.profile?.full_name?.split(' ')[0] ?? r.profile?.company_name ?? 'ユーザー'
+                  return (
+                    <div key={r.profile?.id ?? i} className={`flex items-center gap-2.5 p-2 rounded-xl text-sm ${isMe ? 'bg-orange-50 border border-orange-200' : ''}`}>
+                      <span className="text-lg">{medals[i] ?? i + 1}</span>
+                      <span className={`flex-1 font-medium truncate ${isMe ? 'text-orange-700' : 'text-gray-700'}`}>
+                        {name}{isMe && <span className="ml-1 text-xs text-orange-500">(あなた)</span>}
+                      </span>
+                      <span className={`text-xs font-bold ${isMe ? 'text-orange-600' : 'text-gray-500'}`}>{(r.total_xp_earned ?? 0).toLocaleString()}</span>
+                    </div>
+                  )
+                })}
+              </div>
+            ) : (
+              <div className="text-center py-4 text-gray-400 text-xs">まだランキングデータがありません</div>
+            )}
           </div>
 
           {/* Plan info */}

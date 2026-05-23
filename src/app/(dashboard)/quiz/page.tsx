@@ -21,56 +21,21 @@ type Question = {
 }
 
 const CATEGORIES = [
-  { id: 'hearing', label: 'ヒアリング', emoji: '👂', count: 42, weak: true },
-  { id: 'opening', label: 'オープニング', emoji: '🚪', count: 38, weak: false },
-  { id: 'proposition', label: '提案力', emoji: '💡', count: 45, weak: false },
-  { id: 'objection', label: '反論処理', emoji: '🛡️', count: 35, weak: true },
-  { id: 'closing', label: 'クロージング', emoji: '🤝', count: 40, weak: false },
-  { id: 'rapport', label: 'ラポール構築', emoji: '😊', count: 28, weak: false },
-  { id: 'follow_up', label: 'フォローアップ', emoji: '📞', count: 22, weak: false },
-  { id: 'product', label: '商品知識', emoji: '📦', count: 55, weak: false },
-  { id: 'mindset', label: 'メンタル・マインド', emoji: '🧘', count: 20, weak: false },
+  { id: 'hearing', label: 'ヒアリング', emoji: '👂' },
+  { id: 'opening', label: 'オープニング', emoji: '🚪' },
+  { id: 'proposition', label: '提案力', emoji: '💡' },
+  { id: 'objection', label: '反論処理', emoji: '🛡️' },
+  { id: 'closing', label: 'クロージング', emoji: '🤝' },
+  { id: 'rapport', label: 'ラポール構築', emoji: '😊' },
+  { id: 'follow_up', label: 'フォローアップ', emoji: '📞' },
+  { id: 'product', label: '商品知識', emoji: '📦' },
+  { id: 'mindset', label: 'メンタル・マインド', emoji: '🧘' },
 ]
 
 const QUESTION_TYPES = [
   { id: 'multiple_choice', label: '4択問題', emoji: '🔢', desc: '基礎知識を確認', xp: 10 },
   { id: 'written', label: '記述問題', emoji: '✍️', desc: 'AIが採点・フィードバック', xp: 25 },
   { id: 'case_study', label: 'ケーススタディ', emoji: '📖', desc: '実践的なシナリオ問題', xp: 40 },
-]
-
-const DUMMY_QUESTIONS: Question[] = [
-  {
-    id: 1,
-    type: 'multiple_choice' as QuestionType,
-    category: 'hearing',
-    difficulty: 2,
-    question: '初回商談でヒアリングする際、最も重要なことはどれですか？',
-    choices: [
-      { label: 'A', text: '自社商品の機能を詳しく説明する' },
-      { label: 'B', text: '相手の課題・痛みを深く理解するために質問する' },
-      { label: 'C', text: '価格の話を早めに切り出す' },
-      { label: 'D', text: '競合他社の悪口を言って差別化する' },
-    ],
-    correct: 'B',
-    explanation: '初回商談では「相手の話を聞く」ことが最優先です。BANTフレームワーク（Budget / Authority / Needs / Timeline）を意識しながら、課題の深掘りを行いましょう。',
-    xp: 10,
-  },
-  {
-    id: 2,
-    type: 'multiple_choice' as QuestionType,
-    category: 'hearing',
-    difficulty: 3,
-    question: '「今は予算がない」という反論を受けたとき、最も適切な次のアクションはどれですか？',
-    choices: [
-      { label: 'A', text: '「そうですか、また機会があれば」と電話を切る' },
-      { label: 'B', text: '「実はキャンペーン中で安いですよ」とすぐに値引きを提示する' },
-      { label: 'C', text: '「予算をかけない場合、現状どれくらいの損失が発生していますか？」と課題の損失額を確認する' },
-      { label: 'D', text: '「うちは他社より安いです」と競合比較をする' },
-    ],
-    correct: 'C',
-    explanation: '「予算がない」は多くの場合、「ROIが見えない」「緊急性を感じない」というシグナルです。現状の損失・コストを数値化することで、投資対効果を実感させましょう。',
-    xp: 15,
-  },
 ]
 
 export default function QuizPage() {
@@ -84,7 +49,7 @@ export default function QuizPage() {
   const [showExplanation, setShowExplanation] = useState(false)
   const [answers, setAnswers] = useState<{ correct: boolean; xp: number }[]>([])
   const [writtenAnswer, setWrittenAnswer] = useState('')
-  const [questions, setQuestions] = useState<Question[]>(DUMMY_QUESTIONS)
+  const [questions, setQuestions] = useState<Question[]>([])
   const [loading, setLoading] = useState(false)
   const [genError, setGenError] = useState<string | null>(null)
 
@@ -215,8 +180,7 @@ export default function QuizPage() {
         </div>
 
         <div className="bg-white rounded-2xl p-6 shadow-sm mb-4">
-          <h2 className="font-bold text-gray-800 mb-1">カテゴリを選択 <span className="text-orange-500">（複数可）</span></h2>
-          <p className="text-sm text-gray-400 mb-4">🔴 は弱点カテゴリです</p>
+          <h2 className="font-bold text-gray-800 mb-4">カテゴリを選択 <span className="text-orange-500">（複数可）</span></h2>
           <div className="grid grid-cols-3 gap-3">
             {CATEGORIES.map(cat => (
               <button key={cat.id} onClick={() => toggleCategory(cat.id)}
@@ -225,21 +189,13 @@ export default function QuizPage() {
                     ? 'border-orange-400 bg-orange-50'
                     : 'border-gray-200 hover:border-gray-300'
                 }`}>
-                {cat.weak && (
-                  <div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-red-500" />
-                )}
                 <div className="text-xl mb-1">{cat.emoji}</div>
                 <p className={`font-semibold text-sm ${selectedCategories.includes(cat.id) ? 'text-orange-700' : 'text-gray-800'}`}>
                   {cat.label}
                 </p>
-                <p className="text-xs text-gray-400">{cat.count}問</p>
               </button>
             ))}
           </div>
-          <button onClick={() => setSelectedCategories(CATEGORIES.filter(c => c.weak).map(c => c.id))}
-            className="mt-3 text-sm text-orange-500 hover:text-orange-600 font-medium">
-            弱点カテゴリを自動選択
-          </button>
         </div>
 
         <div className="bg-white rounded-2xl p-6 shadow-sm mb-4">

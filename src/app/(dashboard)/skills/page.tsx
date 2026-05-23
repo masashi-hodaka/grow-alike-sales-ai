@@ -260,7 +260,10 @@ export default function SkillsPage() {
   const allSkills = SKILL_CATEGORIES.flatMap(c => c.skills)
   const weakSkills = allSkills.filter(s => s.isWeak)
   const masteredCount = allSkills.filter(s => s.mastery === 'mastered').length
-  const avgScore = Math.round(allSkills.filter(s => s.score > 0).reduce((sum, s) => sum + s.score, 0) / allSkills.filter(s => s.score > 0).length)
+  const scoredSkills = allSkills.filter(s => s.score > 0)
+  const avgScore = scoredSkills.length > 0
+    ? Math.round(scoredSkills.reduce((sum, s) => sum + s.score, 0) / scoredSkills.length)
+    : 0
 
   const displayedCategories = selectedCategory === 'all'
     ? SKILL_CATEGORIES

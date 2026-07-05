@@ -115,9 +115,14 @@ export default function LoginPage() {
               />
             </div>
             <div>
-              <label className="text-sm font-semibold text-gray-700 block mb-1.5">
-                パスワード
-              </label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-sm font-semibold text-gray-700">
+                  パスワード
+                </label>
+                <Link href="/forgot-password" className="text-xs text-orange-500 hover:text-orange-600 transition">
+                  パスワードをお忘れですか？
+                </Link>
+              </div>
               <div className="relative">
                 <input
                   type={showPassword ? 'text' : 'password'}

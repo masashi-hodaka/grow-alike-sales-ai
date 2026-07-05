@@ -27,14 +27,14 @@ const QUICK_ACTIONS = [
     emoji: '🎭',
     label: 'AIロープレ',
     sublabel: '実践シミュレーション',
-    gradient: 'linear-gradient(135deg,#8b5cf6,#6d28d9)',
+    gradient: 'linear-gradient(135deg,#fb923c,#f97316)',
   },
   {
     href: '/recordings/new',
     emoji: '🎙️',
     label: '録音分析',
     sublabel: 'ロープレ・実商談',
-    gradient: 'linear-gradient(135deg,#06b6d4,#0891b2)',
+    gradient: 'linear-gradient(135deg,#fbbf24,#f59e0b)',
   },
 ]
 
@@ -85,16 +85,16 @@ export default async function DashboardPage() {
 
       {/* Beta Banner */}
       <div className="mb-5 rounded-2xl px-5 py-3.5 flex items-center justify-between"
-        style={{ background: 'linear-gradient(135deg,#0ea5e9,#0284c7)' }}>
+        style={{ background: 'linear-gradient(135deg,#f97316,#ea580c)' }}>
         <div className="flex items-center gap-3">
-          <span className="bg-white text-sky-600 text-xs font-black px-2.5 py-1 rounded-full tracking-wide">BETA</span>
+          <span className="bg-white text-orange-600 text-xs font-black px-2.5 py-1 rounded-full tracking-wide">BETA</span>
           <div>
             <p className="text-white font-bold text-sm">ベータ版 — 全機能を無料でお試しいただけます</p>
-            <p className="text-sky-200 text-xs">フィードバックをお待ちしています。気になった点はいつでもお知らせください。</p>
+            <p className="text-orange-100 text-xs">フィードバックをお待ちしています。気になった点はいつでもお知らせください。</p>
           </div>
         </div>
         <a href="mailto:masashi-hodaka@grow-alike.com?subject=Grow Alike Sales AI フィードバック"
-          className="flex-shrink-0 bg-white text-sky-600 text-xs font-bold px-3.5 py-2 rounded-xl hover:bg-sky-50 transition">
+          className="flex-shrink-0 bg-white text-orange-600 text-xs font-bold px-3.5 py-2 rounded-xl hover:bg-orange-50 transition">
           フィードバック送る
         </a>
       </div>
@@ -234,7 +234,7 @@ export default async function DashboardPage() {
                   return (
                     <Link key={rec.id} href={`/recordings/${rec.id}`}
                       className="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 transition">
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg ${rec.recording_type === 'roleplay' ? 'bg-orange-100' : 'bg-blue-100'}`}>
+                      <div className="w-10 h-10 rounded-xl flex items-center justify-center text-lg bg-orange-100">
                         {rec.recording_type === 'roleplay' ? '🎭' : '💼'}
                       </div>
                       <div className="flex-1">

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
@@ -101,6 +102,7 @@ export default function Sidebar({ profile, userLevel }: { profile: Profile; user
   }
 
   const initials = profile.full_name?.charAt(0)?.toUpperCase() ?? profile.company_name?.charAt(0)?.toUpperCase() ?? 'U'
+  const avatarUrl = profile.avatar_url ?? null
 
   return (
     <>
@@ -154,9 +156,16 @@ export default function Sidebar({ profile, userLevel }: { profile: Profile; user
       {/* User info + XP bar */}
       <div className="px-4 py-3 border-b border-white/10">
         <div className="flex items-center gap-2.5 mb-2.5">
-          <div className="w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0"
+          <div className="w-9 h-9 rounded-full flex-shrink-0 overflow-hidden"
             style={{ background: 'linear-gradient(135deg,#f97316,#dc2626)' }}>
-            {initials}
+            {avatarUrl ? (
+              <Image src={avatarUrl} alt="avatar" width={36} height={36}
+                className="w-full h-full object-cover" unoptimized />
+            ) : (
+              <span className="w-full h-full flex items-center justify-center text-white font-bold text-sm">
+                {initials}
+              </span>
+            )}
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-white text-sm font-semibold truncate">

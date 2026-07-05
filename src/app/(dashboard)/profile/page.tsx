@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
+import Image from 'next/image'
 import { Profile, UserLevel, UsageStats, UserBadge, Badge } from '@/types/database'
 
 const RARITY_CONFIG: Record<string, { color: string; bg: string; label: string }> = {
@@ -113,9 +114,16 @@ export default async function ProfilePage() {
           {/* Profile card */}
           <div className="bg-white rounded-2xl p-5 shadow-sm">
             <div className="flex items-center gap-4 mb-5">
-              <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-white text-2xl font-black flex-shrink-0"
+              <div className="w-16 h-16 rounded-2xl overflow-hidden flex-shrink-0"
                 style={{ background: 'linear-gradient(135deg,#f97316,#ea580c)' }}>
-                {initials}
+                {p.avatar_url ? (
+                  <Image src={p.avatar_url} alt="プロフィール画像" width={64} height={64}
+                    className="w-full h-full object-cover" unoptimized />
+                ) : (
+                  <span className="w-full h-full flex items-center justify-center text-white text-2xl font-black">
+                    {initials}
+                  </span>
+                )}
               </div>
               <div className="flex-1">
                 <div className="flex items-center gap-2">

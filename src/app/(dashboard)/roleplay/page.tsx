@@ -381,7 +381,7 @@ function ChatSession({
           <input
             value={input}
             onChange={e => setInput(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && !e.shiftKey && sendMessage()}
+            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) e.preventDefault() }}
             placeholder="返答を入力してください..."
             className="flex-1 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-gray-50"
           />
